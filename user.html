@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Check-In | Face Check-In</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            background: #f5f7fb;
+            color: #18212f;
+        }
+
+        header {
+            background: #0b3b46;
+            color: white;
+            padding: 18px 24px;
+        }
+
+        .topbar {
+            max-width: 980px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        h1 {
+            font-size: 1.45rem;
+            letter-spacing: 0;
+        }
+
+        nav {
+            display: flex;
+            gap: 10px;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            padding: 9px 14px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+
+        main {
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .panel {
+            background: white;
+            border: 1px solid #dce3ea;
+            border-radius: 8px;
+            padding: 18px;
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+        }
+
+        .camera-box {
+            background: #060b12;
+            border-radius: 8px;
+            overflow: hidden;
+            min-height: 280px;
+            display: grid;
+            place-items: center;
+        }
+
+        .placeholder {
+            color: #b8c4d0;
+            padding: 28px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        #displayCanvas {
+            width: 100%;
+            display: none;
+        }
+
+        #video,
+        #canvas {
+            display: none;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 16px;
+        }
+
+        button {
+            border: 0;
+            border-radius: 8px;
+            padding: 13px 18px;
+            font-size: 1rem;
+            font-weight: 800;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: #0f766e;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #52616f;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #b42318;
+            color: white;
+        }
+
+        .status {
+            margin-top: 14px;
+            padding: 12px;
+            border-radius: 8px;
+            background: #e7eef6;
+            color: #14213d;
+            font-weight: 700;
+        }
+
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(10, 15, 25, 0.68);
+            padding: 18px;
+        }
+
+        .modal {
+            background: white;
+            width: min(420px, 100%);
+            border-radius: 8px;
+            padding: 22px;
+            box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+        }
+
+        .modal h2 {
+            color: #0b3b46;
+            margin-bottom: 10px;
+        }
+
+        .detected-name {
+            font-size: 1.55rem;
+            font-weight: 800;
+            margin: 8px 0;
+        }
+
+        .muted {
+            color: #667085;
+        }
+
+        @media (max-width: 640px) {
+            main {
+                padding: 16px;
+            }
+
+            button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="topbar">
+            <h1>User Check-In</h1>
+            <nav>
+                <a href="/">Home</a>
+                <a href="/admin">Admin</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="panel">
+            <div class="camera-box">
+                <div class="placeholder" id="placeholder">Click Check In to open the camera.</div>
+                <canvas id="displayCanvas"></canvas>
+            </div>
+            <video id="video" autoplay playsinline></video>
+            <canvas id="canvas"></canvas>
+
+            <div class="controls">
+                <button class="btn-primary" onclick="startCheckIn()">Check In</button>
+                <button class="btn-secondary" onclick="stopCamera()">Stop Camera</button>
+            </div>
+            <div class="status" id="status">Ready for check-in.</div>
+        </section>
+    </main>
+
+    <div class="modal-backdrop" id="approvalModal">
+        <div class="modal">
+            <h2>Face Detected</h2>
+            <p class="muted">Please confirm this check-in.</p>
+            <div class="detected-name" id="detectedName">Unknown</div>
+            <p class="muted" id="detectedConfidence"></p>
+            <div class="controls">
+                <button class="btn-primary" onclick="approveCheckIn()">Approve</button>
+                <button class="btn-danger" onclick="rejectCheckIn()">Reject</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const video = document.getElementById("video");
+        const canvas = document.getElementById("canvas");
+        const ctx = canvas.getContext("2d");
+        const displayCanvas = document.getElementById("displayCanvas");
+        const displayCtx = displayCanvas.getContext("2d");
+        const placeholder = document.getElementById("placeholder");
+        const statusBox = document.getElementById("status");
+        const modal = document.getElementById("approvalModal");
+
+        let stream = null;
+        let isRequestInFlight = false;
+        let lastRequestTime = 0;
+        let pendingFace = null;
+        let modalOpen = false;
+        let rejectedUntil = {};
+
+        const FRAME_SEND_INTERVAL = 500;
+        const IMAGE_QUALITY = 0.7;
+        const CANVAS_WIDTH = 1280;
+        const CANVAS_HEIGHT = 720;
+
+        async function startCheckIn() {
+            if (stream) {
+                setStatus("Scanning for a registered face...");
+                return;
+            }
+
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 },
+                        frameRate: { ideal: 15, max: 20 }
+                    }
+                });
+
+                video.srcObject = stream;
+                await applyCameraZoomIfAvailable(1.5);
+                await video.play();
+
+                canvas.width = CANVAS_WIDTH;
+                canvas.height = CANVAS_HEIGHT;
+                displayCanvas.width = video.videoWidth || 640;
+                displayCanvas.height = video.videoHeight || 480;
+                displayCanvas.style.display = "block";
+                placeholder.style.display = "none";
+
+                setStatus("Scanning for a registered face...");
+                processFrame();
+            } catch (err) {
+                setStatus("Camera access denied: " + err.message);
+            }
+        }
+
+        async function applyCameraZoomIfAvailable(targetZoom) {
+            const [track] = stream.getVideoTracks();
+            const capabilities = track.getCapabilities ? track.getCapabilities() : {};
+
+            if (!capabilities.zoom) {
+                return;
+            }
+
+            const zoom = Math.min(
+                Math.max(targetZoom, capabilities.zoom.min),
+                capabilities.zoom.max
+            );
+
+            await track.applyConstraints({ advanced: [{ zoom }] });
+        }
+
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+                video.srcObject = null;
+            }
+
+            displayCtx.clearRect(0, 0, displayCanvas.width, displayCanvas.height);
+            displayCanvas.style.display = "none";
+            placeholder.style.display = "block";
+            pendingFace = null;
+            modalOpen = false;
+            modal.style.display = "none";
+            setStatus("Ready for check-in.");
+        }
+
+        async function processFrame() {
+            if (!stream) {
+                return;
+            }
+
+            if (modalOpen || isRequestInFlight) {
+                setTimeout(processFrame, 80);
+                return;
+            }
+
+            const now = Date.now();
+            if (now - lastRequestTime < FRAME_SEND_INTERVAL) {
+                drawVideoOnly();
+                setTimeout(processFrame, 50);
+                return;
+            }
+
+            try {
+                isRequestInFlight = true;
+                lastRequestTime = now;
+
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const imageData = canvas.toDataURL("image/jpeg", IMAGE_QUALITY);
+
+                const response = await fetch("/process_frame", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ image: imageData })
+                });
+
+                const data = await response.json();
+                drawDetections(data);
+
+                const knownFace = (data.faces || []).find(face => {
+                    if (!face.name || face.name === "Unknown") {
+                        return false;
+                    }
+
+                    return !rejectedUntil[face.name] || Date.now() > rejectedUntil[face.name];
+                });
+                if (knownFace) {
+                    showApproval(knownFace);
+                }
+            } catch (err) {
+                console.error("Processing error:", err);
+                setStatus("Could not process camera frame.");
+            }
+
+            isRequestInFlight = false;
+            setTimeout(processFrame, 50);
+        }
+
+        function drawVideoOnly() {
+            displayCtx.drawImage(video, 0, 0, displayCanvas.width, displayCanvas.height);
+        }
+
+        function drawDetections(data) {
+            drawVideoOnly();
+
+            const scaleX = displayCanvas.width / CANVAS_WIDTH;
+            const scaleY = displayCanvas.height / CANVAS_HEIGHT;
+
+            (data.faces || []).forEach(face => {
+                const [left, top, right, bottom] = face.bbox;
+                const scaledLeft = left * scaleX;
+                const scaledTop = top * scaleY;
+                const width = (right - left) * scaleX;
+                const height = (bottom - top) * scaleY;
+                const color = face.name === "Unknown" ? "#f59e0b" : "#22c55e";
+                const label = face.confidence > 0 ? `${face.name} (${face.confidence.toFixed(1)}%)` : face.name;
+
+                displayCtx.strokeStyle = color;
+                displayCtx.lineWidth = 3;
+                displayCtx.strokeRect(scaledLeft, scaledTop, width, height);
+                displayCtx.fillStyle = color;
+                displayCtx.font = "bold 18px Arial";
+                const textWidth = displayCtx.measureText(label).width;
+                displayCtx.fillRect(scaledLeft, Math.max(0, scaledTop - 30), textWidth + 10, 26);
+                displayCtx.fillStyle = "#051014";
+                displayCtx.fillText(label, scaledLeft + 5, Math.max(18, scaledTop - 10));
+            });
+        }
+
+        function showApproval(face) {
+            pendingFace = face;
+            modalOpen = true;
+            document.getElementById("detectedName").textContent = face.name;
+            document.getElementById("detectedConfidence").textContent = face.confidence
+                ? `Confidence: ${face.confidence.toFixed(1)}%`
+                : "";
+            modal.style.display = "flex";
+            setStatus("Face detected. Waiting for approval.");
+        }
+
+        async function approveCheckIn() {
+            if (!pendingFace) {
+                return;
+            }
+
+            try {
+                const response = await fetch("/approve_checkin", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        name: pendingFace.name,
+                        confidence: pendingFace.confidence || 0
+                    })
+                });
+
+                const data = await response.json();
+                closeModal();
+                setStatus(data.message || "Check-in saved.");
+            } catch (err) {
+                closeModal();
+                setStatus("Could not save check-in: " + err.message);
+            }
+        }
+
+        function rejectCheckIn() {
+            if (pendingFace) {
+                rejectedUntil[pendingFace.name] = Date.now() + 4000;
+            }
+
+            closeModal();
+            setStatus("Rejected. Scanning again...");
+        }
+
+        function closeModal() {
+            pendingFace = null;
+            modalOpen = false;
+            modal.style.display = "none";
+        }
+
+        function setStatus(message) {
+            statusBox.textContent = message;
+        }
+    </script>
+</body>
+</html>
