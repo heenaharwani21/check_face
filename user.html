@@ -227,6 +227,7 @@
         const placeholder = document.getElementById("placeholder");
         const statusBox = document.getElementById("status");
         const modal = document.getElementById("approvalModal");
+        const API_BASE = "https://c20a-2401-4900-xxxx.ngrok-free.app";
 
         let stream = null;
         let isRequestInFlight = false;
@@ -329,7 +330,7 @@
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                 const imageData = canvas.toDataURL("image/jpeg", IMAGE_QUALITY);
 
-                const response = await fetch("https://c20a-2401-4900-1f3e-658e-34e4-6a18-f30b-5e1e.ngrok-free.app/process_frame", {
+                const response = await fetch("${API_BASE}/process_frame", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ image: imageData })
@@ -405,7 +406,7 @@
             }
 
             try {
-                const response = await fetch("https://c20a-2401-4900-1f3e-658e-34e4-6a18-f30b-5e1e.ngrok-free.app/approve_checkin", {
+                const response = await fetch("${API_BASE}/approve_checkin", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
