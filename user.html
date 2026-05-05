@@ -330,7 +330,7 @@
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                 const imageData = canvas.toDataURL("image/jpeg", IMAGE_QUALITY);
 
-                const response = await fetch('${API_BASE}/process_frame', {
+                const response = await fetch(`${API_BASE}/process_frame`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ image: imageData })
@@ -406,7 +406,7 @@
             }
 
             try {
-                const response = await fetch('${API_BASE}/approve_checkin', {
+                const response = await fetch(`${API_BASE}/approve_checkin`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
