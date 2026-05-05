@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel | Face Check-In</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            background: #eef2f6;
+            color: #17202a;
+        }
+
+        header {
+            background: #14213d;
+            color: white;
+            padding: 18px 24px;
+        }
+
+        .topbar {
+            max-width: 1280px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        h1 {
+            font-size: 1.45rem;
+            letter-spacing: 0;
+        }
+
+        nav {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            padding: 9px 14px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+
+        main {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.8fr);
+            gap: 20px;
+            align-items: start;
+        }
+
+        section {
+            background: white;
+            border: 1px solid #dce3ea;
+            border-radius: 8px;
+            padding: 18px;
+            box-shadow: 0 10px 24px rgba(20, 33, 61, 0.08);
+        }
+
+        h2 {
+            color: #14213d;
+            font-size: 1.15rem;
+            margin-bottom: 14px;
+        }
+
+        .camera-box {
+            background: #0b0f17;
+            border-radius: 8px;
+            overflow: hidden;
+            min-height: 260px;
+        }
+
+        #displayCanvas {
+            width: 100%;
+            display: block;
+        }
+
+        #video,
+        #canvas {
+            display: none;
+        }
+
+        .controls,
+        .field-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 14px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            min-width: 220px;
+            padding: 12px;
+            border: 1px solid #b8c4d0;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+
+        button {
+            border: 0;
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: #0f766e;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #52616f;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #b42318;
+            color: white;
+        }
+
+        .status {
+            margin-top: 12px;
+            padding: 11px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+
+        .status.success {
+            background: #dff7ea;
+            color: #14532d;
+        }
+
+        .status.error {
+            background: #ffe4e1;
+            color: #8a1c13;
+        }
+
+        .status.info {
+            background: #e0f2fe;
+            color: #075985;
+        }
+
+        .side-stack {
+            display: grid;
+            gap: 20px;
+        }
+
+        .face-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            max-height: 180px;
+            overflow: auto;
+        }
+
+        .face-tag {
+            background: #e7eef6;
+            color: #14213d;
+            border: 1px solid #cbd8e5;
+            padding: 7px 10px;
+            border-radius: 999px;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .log-list {
+            display: grid;
+            gap: 10px;
+            max-height: 430px;
+            overflow: auto;
+        }
+
+        .log-entry {
+            border-left: 4px solid #0f766e;
+            background: #f8fafc;
+            padding: 12px;
+            border-radius: 8px;
+        }
+
+        .log-entry strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .muted {
+            color: #667085;
+            font-size: 0.95rem;
+        }
+
+        @media (max-width: 900px) {
+            main {
+                padding: 16px;
+            }
+
+            .layout {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="topbar">
+            <h1>Admin Panel</h1>
+            <nav>
+                <a href="/">Home</a>
+                <a href="/user">User Check-In</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <div class="layout">
+            <section>
+                <h2>Register Person Face</h2>
+                <div class="camera-box">
+                    <canvas id="displayCanvas"></canvas>
+                </div>
+                <video id="video" autoplay playsinline></video>
+                <canvas id="canvas"></canvas>
+
+                <div class="controls">
+                    <button class="btn-primary" onclick="startCamera()">Start Camera</button>
+                    <button class="btn-secondary" onclick="stopCamera()">Stop Camera</button>
+                </div>
+
+                <div class="field-row">
+                    <input type="text" id="nameInput" placeholder="Enter person name">
+                    <button class="btn-primary" onclick="registerFace()">Register</button>
+                </div>
+                <div id="registerStatus"></div>
+            </section>
+
+            <div class="side-stack">
+                <section>
+                    <h2>Registered Faces: <span id="faceCount">0</span></h2>
+                    <div class="face-list" id="faceList">
+                        <p class="muted">No registered faces loaded.</p>
+                    </div>
+                </section>
+
+                <section>
+                    <div class="controls" style="justify-content: space-between; margin-top: 0;">
+                        <h2>Approved Check-Ins</h2>
+                        <button class="btn-danger" onclick="clearLogs()">Clear</button>
+                    </div>
+                    <div class="log-list" id="logEntries">
+                        <p class="muted">No approved check-ins yet.</p>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const video = document.getElementById("video");
+        const canvas = document.getElementById("canvas");
+        const ctx = canvas.getContext("2d");
+        const displayCanvas = document.getElementById("displayCanvas");
+        const displayCtx = displayCanvas.getContext("2d");
+
+        let stream = null;
+        let drawTimer = null;
+        const CANVAS_WIDTH = 1280;
+        const CANVAS_HEIGHT = 720;
+
+        async function startCamera() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 },
+                        frameRate: { ideal: 15, max: 20 }
+                    }
+                });
+
+                video.srcObject = stream;
+                await applyCameraZoomIfAvailable(1.5);
+                await video.play();
+
+                canvas.width = CANVAS_WIDTH;
+                canvas.height = CANVAS_HEIGHT;
+                displayCanvas.width = video.videoWidth || 640;
+                displayCanvas.height = video.videoHeight || 480;
+
+                drawCameraPreview();
+            } catch (err) {
+                showStatus("registerStatus", "error", "Camera access denied: " + err.message);
+            }
+        }
+
+        async function applyCameraZoomIfAvailable(targetZoom) {
+            const [track] = stream.getVideoTracks();
+            const capabilities = track.getCapabilities ? track.getCapabilities() : {};
+
+            if (!capabilities.zoom) {
+                return;
+            }
+
+            const zoom = Math.min(
+                Math.max(targetZoom, capabilities.zoom.min),
+                capabilities.zoom.max
+            );
+
+            await track.applyConstraints({ advanced: [{ zoom }] });
+        }
+
+        function drawCameraPreview() {
+            if (!stream) {
+                return;
+            }
+
+            displayCtx.drawImage(video, 0, 0, displayCanvas.width, displayCanvas.height);
+            drawTimer = requestAnimationFrame(drawCameraPreview);
+        }
+
+        function stopCamera() {
+            if (drawTimer) {
+                cancelAnimationFrame(drawTimer);
+                drawTimer = null;
+            }
+
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+                video.srcObject = null;
+            }
+
+            displayCtx.clearRect(0, 0, displayCanvas.width, displayCanvas.height);
+        }
+
+        async function registerFace() {
+            const name = document.getElementById("nameInput").value.trim();
+
+            if (!name) {
+                showStatus("registerStatus", "error", "Please enter a name.");
+                return;
+            }
+
+            if (!stream) {
+                showStatus("registerStatus", "error", "Please start the camera first.");
+                return;
+            }
+
+            try {
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const imageData = canvas.toDataURL("image/jpeg", 0.85);
+
+                showStatus("registerStatus", "info", "Registering face...");
+
+                const response = await fetch("/register_face", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ name, image: imageData })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showStatus("registerStatus", "success", data.message);
+                    document.getElementById("nameInput").value = "";
+                    loadRegisteredFaces();
+                } else {
+                    showStatus("registerStatus", "error", data.message);
+                }
+            } catch (err) {
+                showStatus("registerStatus", "error", "Error: " + err.message);
+            }
+        }
+
+        async function loadRegisteredFaces() {
+            try {
+                const response = await fetch("/get_registered_faces");
+                const data = await response.json();
+                const faceList = document.getElementById("faceList");
+
+                document.getElementById("faceCount").textContent = data.total;
+                faceList.innerHTML = "";
+
+                if (!data.faces.length) {
+                    faceList.innerHTML = '<p class="muted">No registered faces yet.</p>';
+                    return;
+                }
+
+                data.faces.forEach(name => {
+                    const tag = document.createElement("div");
+                    tag.className = "face-tag";
+                    tag.textContent = name;
+                    faceList.appendChild(tag);
+                });
+            } catch (err) {
+                console.error("Error loading registered faces:", err);
+            }
+        }
+
+        async function loadLogs() {
+            try {
+                const response = await fetch("/get_detection_log");
+                const data = await response.json();
+                const logEntries = document.getElementById("logEntries");
+                logEntries.innerHTML = "";
+
+                if (!data.logs.length) {
+                    logEntries.innerHTML = '<p class="muted">No approved check-ins yet.</p>';
+                    return;
+                }
+
+                data.logs.forEach(entry => {
+                    const item = document.createElement("div");
+                    item.className = "log-entry";
+                    const confidence = entry.confidence ? ` · ${Number(entry.confidence).toFixed(1)}%` : "";
+                    item.innerHTML = `<strong>${entry.name}</strong><span class="muted">${entry.formatted_time}${confidence}</span>`;
+                    logEntries.appendChild(item);
+                });
+            } catch (err) {
+                console.error("Error loading logs:", err);
+            }
+        }
+
+        async function clearLogs() {
+            try {
+                await fetch("/clear_detection_log", { method: "POST" });
+                loadLogs();
+            } catch (err) {
+                console.error("Error clearing logs:", err);
+            }
+        }
+
+        function showStatus(id, type, message) {
+            const status = document.getElementById(id);
+            status.className = `status ${type}`;
+            status.textContent = message;
+        }
+
+        document.getElementById("nameInput").addEventListener("keypress", event => {
+            if (event.key === "Enter") {
+                registerFace();
+            }
+        });
+
+        loadRegisteredFaces();
+        loadLogs();
+        setInterval(loadLogs, 3000);
+    </script>
+</body>
+</html>
