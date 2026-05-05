@@ -370,7 +370,7 @@
 
                 showStatus("registerStatus", "info", "Registering face...");
 
-                const response = await fetch("${API_BASE}/register_face", {
+                const response = await fetch('${API_BASE}/register_face', {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ name, image: imageData })
@@ -392,7 +392,7 @@
 
         async function loadRegisteredFaces() {
             try {
-                const response = await fetch("${API_BASE}/get_registered_faces");
+                const response = await fetch('${API_BASE}/get_registered_faces');
                 const data = await response.json();
                 const faceList = document.getElementById("faceList");
 
@@ -406,7 +406,7 @@
 
                 data.faces.forEach(name => {
                     const tag = document.createElement("div");
-                    tag.className = "face-tag";
+                    tag.className = "face-tag";            
                     tag.textContent = name;
                     faceList.appendChild(tag);
                 });
@@ -417,7 +417,7 @@
 
         async function loadLogs() {
             try {
-                const response = await fetch("${API_BASE}/get_detection_log");
+                const response = await fetch('${API_BASE}/get_detection_log');
                 const data = await response.json();
                 const logEntries = document.getElementById("logEntries");
                 logEntries.innerHTML = "";
@@ -441,7 +441,7 @@
 
         async function clearLogs() {
             try {
-                await fetch("${API_BASE}/clear_detection_log", { method: "POST" });
+                await fetch('${API_BASE}/clear_detection_log', { method: "POST" });
                 loadLogs();
             } catch (err) {
                 console.error("Error clearing logs:", err);
